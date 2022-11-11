@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous" />
+    <link rel="stylesheet" href="/style.css" />
+</head>
+
+<body class="container">
+    <div class="row">
+        <form id="createGrid">
+            <div class="form-group row">
+                <h3>Surface</h3>
+                <div class="col">
+                    <input type="text" class="form-control" name="surfaceWidth" placeholder="width" value="5" />
+                </div>
+                <div class="col">
+                    <input type="text" class="form-control" name="surfaceLength" placeholder="hright" value="5" />
+                </div>
+            </div>
+            <div class="form-group row">
+                <h3>Position</h3>
+                <div class="col">
+                    <input type="text" class="form-control" name="positionX" placeholder="x" value="0" />
+                </div>
+
+                <div class="col">
+                    <input type="text" class="form-control" name="positionY" placeholder="y" value="0" />
+                </div>
+                <div class="col">
+                    <input type="text" class="form-control" name="positionDirection" placeholder="direction" />
+                </div>
+            </div>
+            &nbsp;
+            <div class="form-group row">
+                <div class="col right">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <hr />
+    <div class="row">
+        <div class="col-3">
+            <textarea id="instructions" class="form-control" rows="3"></textarea>
+            <br />
+            <button id="runInstructions" class="btn btn-primary">
+                Run Instructions
+            </button>
+        </div>
+        <div class="col-9">
+            <div id="grids"></div>
+        </div>
+    </div>
+</body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3"
+    crossorigin="anonymous"></script>
+<script>
+    $(document).ready(function () {
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+        $("#runInstructions").on("click", function () {
+            $("#createGrid").submit();
+            setTimeout(() => {
+            $.ajax({
+                type: "POST",
+                url: "https://localhost:7247/api/Move",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                data: JSON.stringify({
+                    surface: {
+                        height: Number.parseInt(
+                            $("#createGrid input[name='surfaceLength']").val()
+                        ),
+                        width: Number.parseInt(
+                            $("#createGrid input[name='surfaceWidth']").val()
+                        ),
+                    },
+                    position: {
+                        x: Number.parseInt(
+                            $("#createGrid input[name='positionX']").val()
+                        ),
+                        y: Number.parseInt(
+                            $("#createGrid input[name='positionY']").val()
+                        ),
+                        // orientation:$("#createGrid input[name='positionDirection']").val()
+                    },
+                    commands: $("#instructions").val().split("\n"),
+                }),
+                success: function (data) {
+                    data.rovers.forEach((x, i) => {
+                        setTimeout(() => {
+                            x.steps.forEach((a, j) => {
+                                setTimeout(
+                                    () => {
+                                        plotGrid(a.y, a.x);
+                                    },
+                                    1000 * j
+                                );
+                            });
+                        });
+                    });
+                    
+                },
+                error: function (err) {
+                    console.log(err);
+                },
+            });
+         
+            }, 2000);
+        });
+
+        $("#createGrid").submit(function (e) {
+            e.preventDefault();
+
+            var surfaceLength = Number.parseInt(
+                $("input[name=surfaceLength]").val()
+            );
+            var surfaceWidth = Number.parseInt($("input[name=surfaceWidth]").val());
+            var positionX = Number.parseInt($("input[name=positionX]").val());
+            var positionY = Number.parseInt($("input[name=positionY]").val());
+            var positionDirection = $("input[name=positionDirection]").val();
+            var grid = new Array(surfaceLength);
+            for (var i = 0; i < grid.length; i++) {
+                grid[i] = new Array(surfaceWidth);
+            }
+            var mainGrid = $("#grids");
+            mainGrid.html("");
+            //fill multidimensional array in div  id grids in row and columns
+            for (var i = grid.length - 1; i >= 0; i--) {
+                var gridRow = $('<div class="row"></div>');
+                for (var j = 0; j < grid[i].length; j++) {
+                    gridDiv = $('<div class="grid"></div>');
+                    gridDiv.attr("id", i + "-" + j);
+                    gridDiv.attr("data-x", i);
+                    gridDiv.attr("data-y", j);
+                    gridDiv.text(i + "-" + j);
+                    gridRow.append(gridDiv);
+                }
+                $("#grids").append(gridRow);
+            }
+            plotGrid(positionX, positionY);
+        });
+    });
+
+    function plotGrid(posx, posy) {
+        //clear other robot position
+        $(".robot").removeClass("robot");
+
+        //set position of robot
+        var robotPosition = $("#" + posx + "-" + posy);
+        robotPosition.addClass("robot");
+    }
+</script>
+
+</html>
